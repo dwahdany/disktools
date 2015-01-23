@@ -9,6 +9,7 @@ from __future__ import unicode_literals, print_function
 import os
 import sys
 import argparse
+from disktools import __version__ as disktools_version
 from disktools.disk_usage import get_size, purge_rec_cache
 
 
@@ -17,7 +18,11 @@ def duc(path):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser('Disk Usage (Cached)')
+    parser = argparse.ArgumentParser(
+        prog='duc',
+        description='Disk Usage (Cached) [disktools ver. %s]' %
+                    disktools_version,
+    )
     parser.add_argument('path', type=str,
                         help='Get size of specified path.')
     parser.add_argument('--purge', action='store_true',

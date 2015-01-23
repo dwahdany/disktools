@@ -1,3 +1,14 @@
+'''
+
+NOTES:
+
+another way is to test against du itself by doing something like:
+
+find /foo/bar -type d | parallel 'du -sb {}' | sort > /tmp/a
+find /foo/bar -type d | parallel './duc {}' | sort > /tmp/b
+diff /tmp/a /tmp/b
+
+'''
 import os
 import random
 import unittest
@@ -14,7 +25,7 @@ def write_blob(filename, size=None):
 
 def get_expected_size(path):
     '''Ground truth by gnu utils'''
-    return du('-s', path).split()[:1]
+    return int(du('-sb', path).split()[:1][0])
 
 
 class TestDiskUsage(unittest.TestCase):
@@ -30,6 +41,9 @@ class TestDiskUsage(unittest.TestCase):
             for num2 in range(1, subcount):
                 subpath = os.path.join(path, str(num2))
                 write_blob(subpath)
+                for num3 in range(1, subcount):
+                    subpath2 = os.path.join(subpath, str(num3))
+                    write_blob(subpath2)
 
     def test_get_size(self):
         expected_size = get_expected_size(self.root)

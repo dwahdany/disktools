@@ -5,10 +5,11 @@ Disk Usage (Cached)
 An implementation of `du` GNU utility that caches previous results
 in .duc hidden folders over the disk tree.
 '''
+from __future__ import unicode_literals, print_function
 import os
 import sys
 import argparse
-from disktools.disk_usage import get_size, purge_cache
+from disktools.disk_usage import get_size, purge_rec_cache
 
 
 def duc(path):
@@ -29,10 +30,8 @@ if __name__ == '__main__':
 
     if args.purge is True:
         'Start purging cache in: %s' % args.path
-        purge_cache(args.path)
+        purge_rec_cache(args.path)
         exit()
 
     size = duc(args.path)
-    units = 'byte(s)'
-    print '%d %s' % (size, units)
-
+    print('%d\t%s' % (size, args.path))

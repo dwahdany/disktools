@@ -10,7 +10,19 @@ reload(sys)
 sys.setdefaultencoding('utf-8')
 
 
-HIDDEN = '.duc'  # stands for 'disk usage cache'
+HIDDEN = u'.duc'  # stands for 'disk usage cache'
+
+
+def _get_size(path):
+    '''Recursively get size of the path. No caching, so this is rather slow.'''
+    total_size = os.path.getsize(path)
+    for item in os.listdir(path):
+        itempath = os.path.join(path, item)
+        if os.path.isfile(itempath):
+            total_size += os.path.getsize(itempath)
+        elif os.path.isdir(itempath):
+            total_size += _get_size(itempath)
+    return total_size
 
 
 def get_cache_path(folder_path):
@@ -40,40 +52,33 @@ def save_cache(folder_path, folder_sizes):
     using a file called blob. The size of the file pads folder disk size
     in bytes to be dividable by a dev block size. This allows for `duc` to
     report the same size as `du`.
+
+    Returns the size of the created/updated cache folder.
     '''
     cache_path = get_cache_path(folder_path)
     cache_dir_path = os.path.dirname(cache_path)
-    cache_blob_path = os.path.join(cache_dir_path, 'blob')
     if not os.path.exists(cache_dir_path):
         os.makedirs(cache_dir_path)
-    # Touch the blob file.
-    open(cache_blob_path, 'w+').close()
-    block_size = os.stat(cache_blob_path).st_blksize
-    # Size of the FAT of the folder plus rounded up data size
-    cache_data = bson.dumps(folder_sizes)
-    delta = block_size - len(cache_data) % block_size
-    ceiled_cache_size = os.path.getsize(cache_dir_path) \
-        + len(cache_data) + delta
-    folder_sizes[HIDDEN] = ceiled_cache_size
     with open(cache_path, 'w+') as output:
         output.write(bson.dumps(folder_sizes))
-    with open(cache_blob_path, 'w+') as blob:
-        blob.write('0' * delta)
+    # Return size of the cache.
+    return _get_size(cache_dir_path)
 
 
 def purge_cache(path):
-    # print path
+    cache_folder_path = os.path.join(path, HIDDEN)
+    if os.path.exists(cache_folder_path):
+        shutil.rmtree(cache_folder_path)
+
+
+def purge_rec_cache(path):
     sub_folders = [folder for folder in os.listdir(path)
                    if os.path.isdir(os.path.join(path, folder))
                    and folder != HIDDEN]
     for sub_folder in sub_folders:
         sub_path = os.path.join(path, sub_folder)
-        purge_cache(sub_path)
-        cache_folder_path = os.path.dirname(get_cache_path(path))
-        if os.path.exists(cache_folder_path):
-            print('Purging: %s' % sub_path)
-            assert cache_folder_path.endswith(HIDDEN)
-            shutil.rmtree(cache_folder_path)
+        purge_rec_cache(sub_path)
+    purge_cache(path)
 
 
 def get_size(path, cached=True, seen_hardlinks=None):
@@ -84,10 +89,6 @@ def get_size(path, cached=True, seen_hardlinks=None):
     entries = [unicode(entry_name) for entry_name in os.listdir(path)]
     folder_sizes = dict()
     cache = load_cache(path)
-    # wow = u'\u0418\u0433\u0440\u0430 \u043f\u0440\u0435\u0441\u0442\u043e\u043b\u043e\u0432 Soundtrack'
-    # print(cache['folder_sizes'])
-    # print(entries)
-    # assert wow in cache['folder_sizes']
     for entry_name in entries:
         entry_path = os.path.join(path, entry_name)
         attributes = os.stat(entry_path)
@@ -98,23 +99,34 @@ def get_size(path, cached=True, seen_hardlinks=None):
             else:
                 continue
         # Sum size on entries.
-        # if os.path.isdir(entry_path):
         if stat.S_ISDIR(attributes.st_mode):
+            if entry_name == HIDDEN:
+                # We add cache size separately.
+                continue
             # Deep first get_size recursion for folders.
-            if cached and (entry_name not in cache['folder_sizes']
-                           or attributes.st_ctime > cache['last_modified']):
+            if cached \
+                    and (entry_name not in cache['folder_sizes']
+                         or attributes.st_ctime > cache['last_modified']):
                 # Learn size recursively.
                 folder_size = get_size(entry_path,
                                        seen_hardlinks=seen_hardlinks)
             else:
                 folder_size = cache['folder_sizes'][entry_name]
-            folder_sizes[entry_name] = folder_size
+            # Never cache the cache.
+            if entry_name != HIDDEN:
+                folder_sizes[entry_name] = folder_size
             size += folder_size
+            # print('Adding folder size: %d (%s)' % (size, entry_path))
         else:
             # Simply sum the file size.
             size += attributes.st_size
+            # print('Adding file size: %d (%s)' % (size, entry_path))
     # Cache learned result on disk.
-    if not path.endswith(HIDDEN):
-        # Don't cache the cache.
-        save_cache(path, folder_sizes)
+    purge_cache(path)
+    if not path.endswith(HIDDEN) and len(folder_sizes) > 0:
+        # Don't cache the cache of the cache.
+        # Don't forget the size of just produced cache folder, otherwise
+        # reported results deviate from the `du -sb` output.
+        size += save_cache(path, folder_sizes)
+        # print('Adding cache size: %d' % size)
     return size

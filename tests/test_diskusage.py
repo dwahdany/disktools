@@ -11,6 +11,7 @@ diff /tmp/a /tmp/b
 '''
 import os
 import random
+import string
 import unittest
 import tempfile
 from sh import du
@@ -28,6 +29,10 @@ def get_expected_size(path):
     return int(du('-sb', path).split()[:1][0])
 
 
+def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
+    return ''.join(random.choice(chars) for _ in range(size))
+
+
 class TestDiskUsage(unittest.TestCase):
 
     def setUp(self):
@@ -40,13 +45,14 @@ class TestDiskUsage(unittest.TestCase):
             subcount = random.randint(1, 5)
             for num2 in range(1, subcount):
                 subpath = os.path.join(path, str(num2))
-                write_blob(subpath)
+                os.mkdir(subpath)
+                write_blob(os.path.join(path, id_generator()))
                 for num3 in range(1, subcount):
                     subpath2 = os.path.join(subpath, str(num3))
                     write_blob(subpath2)
 
     def test_get_size(self):
-        expected_size = get_expected_size(self.root)
         size = get_size(self.root)
+        expected_size = get_expected_size(self.root)
         self.assertEqual(size, expected_size)
 

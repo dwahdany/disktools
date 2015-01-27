@@ -122,7 +122,7 @@ def get_size(path, cached=True, seen_hardlinks=None):
             size += attributes.st_size
             # print('Adding file size: %d (%s)' % (size, entry_path))
     # Cache learned result on disk.
-    purge_cache(path)
+    # purge_cache(path)
     if not path.endswith(HIDDEN) and len(folder_sizes) > 0:
         # Don't cache the cache of the cache.
         # Don't forget the size of just produced cache folder, otherwise

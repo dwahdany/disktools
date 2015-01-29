@@ -91,7 +91,15 @@ def get_size(path, cached=True, seen_hardlinks=None):
     cache = load_cache(path)
     for entry_name in entries:
         entry_path = os.path.join(path, entry_name)
-        attributes = os.stat(entry_path)
+        try:
+            attributes = os.stat(entry_path)
+        except OSError as error:
+            if 'No such file or directory' in str(error):
+                sys.stderr.write('Skipping unaccessible file system entry:'
+                                 ' %s\n' % entry_path)
+                continue
+            raise
+            exit(1)
         # Sum if os.path.isdir(size of linked files only once.
         if attributes.st_nlink > 0:
             if attributes.st_ino not in seen_hardlinks:

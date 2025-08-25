@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "disktools"
+version = "0.0.3"
+description = "Extensions to basic disk tools like du, df, etc, but written in python"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [
+  { name = "Yauhen Yakimovich", email = "eugeny.yakimovitch@gmail.com" }
+]
+requires-python = ">=3.8"
+dependencies = [
+  "bson>=0.3.3"
+]
+
+[project.urls]
+Homepage = "https://github.com/ewiger/disktools"
+Repository = "https://github.com/ewiger/disktools"
+
+[project.scripts]
+duc = "disktools.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["disktools*"]
+
+[project.optional-dependencies]
+test = [
+  "sh"
+]
+

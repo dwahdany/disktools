@@ -20,7 +20,7 @@ from disktools.disk_usage import get_size
 
 def write_blob(filename, size=None):
     size = random.randint(1, 1000000)
-    with open(filename, 'w+') as output:
+    with open(filename, 'wb+') as output:
         output.write(bytearray(os.urandom(size)))
 
 

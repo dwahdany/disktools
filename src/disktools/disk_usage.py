@@ -5,10 +5,6 @@ import bson
 import stat
 import shutil
 
-# Fix utf-8 bugs.
-reload(sys)
-sys.setdefaultencoding('utf-8')
-
 
 HIDDEN = u'.duc'  # stands for 'disk usage cache'
 
@@ -41,7 +37,8 @@ def load_cache(folder_path):
     # Check if any previous values have been kept.
     if not os.path.exists(cache_path):
         return cache
-    cache['folder_sizes'] = bson.loads(open(cache_path).read())
+    with open(cache_path, 'rb') as cache_file:
+        cache['folder_sizes'] = bson.loads(cache_file.read())
     cache['last_modified'] = os.path.getmtime(cache_path)
     return cache
 
@@ -59,10 +56,10 @@ def save_cache(folder_path, folder_sizes):
     cache_dir_path = os.path.dirname(cache_path)
     if not os.path.exists(cache_dir_path):
         os.makedirs(cache_dir_path)
-    with open(cache_path, 'w+') as output:
+    with open(cache_path, 'wb') as output:
         output.write(bson.dumps(folder_sizes))
-    # Return size of the cache.
-    return _get_size(cache_dir_path)
+    # Return size of the cache file only (apparent size), to match `du -sb`.
+    return os.path.getsize(cache_path)
 
 
 def purge_cache(path):
@@ -83,10 +80,10 @@ def purge_rec_cache(path):
 
 def get_size(path, cached=True, seen_hardlinks=None):
     assert os.path.isdir(path)
-    size = os.path.getsize(path)
+    size = 0
     if seen_hardlinks is None:
         seen_hardlinks = list()
-    entries = [unicode(entry_name) for entry_name in os.listdir(path)]
+    entries = [str(entry_name) for entry_name in os.listdir(path)]
     folder_sizes = dict()
     cache = load_cache(path)
     for entry_name in entries:

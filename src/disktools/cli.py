@@ -6,13 +6,29 @@ from disktools import __version__ as disktools_version
 from disktools.disk_usage import get_size, purge_rec_cache
 
 
+def _format_human_readable_size(num_bytes):
+    units = ['B', 'K', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y']
+    size = float(num_bytes)
+    for unit in units:
+        if size < 1024.0 or unit == 'Y':
+            if unit == 'B':
+                return '%dB' % num_bytes
+            return '%.1f%s' % (size, unit)
+        size = size / 1024.0
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog='duc',
         description='Disk Usage (Cached) [disktools ver. %s]' % disktools_version,
+        add_help=False,
     )
     parser.add_argument('path', type=str, help='Get size of specified path.')
     parser.add_argument('--purge', action='store_true', help='Purge and remove all the cache.')
+    parser.add_argument('-h', '--human', dest='human', action='store_true',
+                        help='Print human readable sizes (e.g. 1.1K, 234M).')
+    parser.add_argument('--help', action='help',
+                        help='Show this help message and exit.')
     args = parser.parse_args()
 
     if not os.path.exists(args.path):
@@ -24,7 +40,10 @@ def main() -> None:
         return
 
     size = get_size(args.path)
-    print('%d\t%s' % (size, args.path))
+    if args.human:
+        print('%s\t%s' % (_format_human_readable_size(size), args.path))
+    else:
+        print('%d\t%s' % (size, args.path))
 
 
 if __name__ == '__main__':
